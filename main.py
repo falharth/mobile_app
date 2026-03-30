@@ -10,21 +10,34 @@ from kivy.uix.behaviors import ButtonBehavior  # Import ButtonBehavior to make a
 from kivy.core.window import Window  # Import the Window module to control window settings
 from kivy.graphics import Rectangle, Color, Ellipse, Line, RoundedRectangle  # Import drawing tools
 from kivy.clock import Clock  # Import Clock for scheduling animations
-import webbrowser  # Import webbrowser module to open URLs in the browser
+from kivy.utils import platform  # Import platform to detect iOS vs desktop
 import random  # Import random for star positions
+import os  # Import os for file path handling
 from datetime import datetime  # Import datetime for live clock
+
+# Get the directory where main.py lives (needed for iOS file paths)
+APP_DIR = os.path.dirname(os.path.abspath(__file__))  # Base path for loading images
+
+
+def open_url(url):  # Open a URL — works on both iOS and desktop
+    if platform == 'ios':  # On iPhone, use native iOS API
+        from pyobjus import autoclass  # Import Objective-C bridge (available on iOS)
+        NSUrl = autoclass('NSURL')  # Get NSURL class
+        UIApp = autoclass('UIApplication')  # Get UIApplication class
+        shared = UIApp.sharedApplication()  # Get the running app instance
+        ns_url = NSUrl.URLWithString_(url)  # Convert string to NSURL
+        shared.openURL_(ns_url)  # Open URL in Safari
+    else:  # On desktop (Windows/Mac/Linux)
+        import webbrowser  # Use standard webbrowser module
+        webbrowser.open(url)  # Open URL in default browser
 
 
 class ClickableImage(ButtonBehavior, Image):  # Combine ButtonBehavior + Image to make a clickable image
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        Window.bind(mouse_pos=self.on_mouse_move)  # Listen for mouse movement
+    def on_press(self):  # Called when finger touches the image
+        self.color = (1, 0.3, 0.3, 1)  # Red shine on touch press
 
-    def on_mouse_move(self, window, pos):  # Called every time the mouse moves
-        if self.collide_point(*pos):  # Check if mouse is over this image
-            self.color = (1, 0.3, 0.3, 1)  # Red shine when mouse is on it
-        else:
-            self.color = (1, 1, 1, 1)  # Normal color when mouse leaves
+    def on_release(self):  # Called when finger lifts off the image
+        self.color = (1, 1, 1, 1)  # Normal color when touch ends
 
 
 class GreenScreenApp(App):  # Create our app class that inherits from Kivy's App
@@ -83,57 +96,57 @@ class GreenScreenApp(App):  # Create our app class that inherits from Kivy's App
                          pos_hint={'center_x': 0.5, 'top': 0.08})  # Below the welcome text
         self.layout.add_widget(subtitle)  # Add subtitle to layout
 
-        # Profile image in center
-        img = Image(source='Faisal.png',  # Load the profile image
+        # Profile image in center (use full path for iOS compatibility)
+        img = Image(source=os.path.join(APP_DIR, 'Faisal.png'),  # Load the profile image
                     size_hint=(0.55, 0.55),  # Image takes 45% of screen
                     pos_hint={'center_x': 0.5, 'center_y': 0.5})  # Center on screen
         self.layout.add_widget(img)  # Add the image to the layout
 
-        # Live clock display at top-right corner
+        # Live clock display at top-right corner (lowered for iPhone notch safe area)
         self.clock_label = Label(text='',  # Will be updated every second
                                  font_size='14sp',  # Small font size
                                  color=(0.8, 0.8, 1, 0.7),  # Soft light color
                                  size_hint=(0.3, 0.05),  # Small size
-                                 pos_hint={'right': 0.98, 'top': 0.99})  # Top-right corner
+                                 pos_hint={'right': 0.98, 'top': 0.93})  # Below iPhone notch area
         self.layout.add_widget(self.clock_label)  # Add clock to layout
         Clock.schedule_interval(self._update_clock, 1)  # Update clock every second
         self._update_clock(0)  # Set initial time
 
         # --- "Trade History" button ---
         history_btn = Button(text='Trade History',  # Button label
-                             font_size='15sp',  # Font size
-                             size_hint=(0.35, 0.06),  # 35% width, 6% height
+                             font_size='16sp',  # Font size
+                             size_hint=(0.4, 0.07),  # 40% width, 7% height (touch-friendly)
                              pos_hint={'x': 0.05, 'y': 0.2},  # Left side
                              background_color=(0.4, 0.1, 0.6, 0.85),  # Purple galaxy color
                              color=(1, 1, 1, 1),  # White text
                              bold=True)  # Bold text
-        history_btn.bind(on_press=self.show_history_popup)  # Open popup on press
+        history_btn.bind(on_press=self.show_history_popup)  # Open popup on tap
         self.layout.add_widget(history_btn)  # Add button to layout
 
         # --- "Market News" button ---
         news_btn = Button(text='Learn How?',  # Button label
-                          font_size='15sp',  # Font size
-                          size_hint=(0.35, 0.06),  # 35% width, 6% height
+                          font_size='16sp',  # Font size
+                          size_hint=(0.4, 0.07),  # 40% width, 7% height (touch-friendly)
                           pos_hint={'right': 0.95, 'y': 0.2},  # Right side
                           background_color=(0.1, 0.3, 0.6, 0.85),  # Blue galaxy color
                           color=(1, 1, 1, 1),  # White text
                           bold=True)  # Bold text
-        news_btn.bind(on_press=self.open_market_news)  # Open news website on press
+        news_btn.bind(on_press=self.open_market_news)  # Open news website on tap
         self.layout.add_widget(news_btn)  # Add button to layout
 
-        # --- "About" button ---
+        # --- "About" button --- (lowered for iPhone notch safe area)
         about_btn = Button(text='About',  # Button label
-                           font_size='13sp',  # Smaller font
-                           size_hint=(0.15, 0.05),  # Small button
-                           pos_hint={'x': 0.02, 'top': 0.99},  # Top-left corner
+                           font_size='14sp',  # Readable font
+                           size_hint=(0.2, 0.06),  # Larger tap target for fingers
+                           pos_hint={'x': 0.02, 'top': 0.93},  # Below iPhone notch area
                            background_color=(0.3, 0.3, 0.5, 0.7),  # Subtle purple
                            color=(1, 1, 1, 0.9))  # White text
-        about_btn.bind(on_press=self.show_about_popup)  # Open about popup on press
+        about_btn.bind(on_press=self.show_about_popup)  # Open about popup on tap
         self.layout.add_widget(about_btn)  # Add button to layout
 
-        # Click adx.png image to open ADX website
-        img2 = ClickableImage(source='adx.png',  # Load adx.png as a clickable image
-                              size_hint=(0.3, 0.1),  # Image takes 30% width and 8% height
+        # Tap adx.png image to open ADX website (touch-friendly size, full path for iOS)
+        img2 = ClickableImage(source=os.path.join(APP_DIR, 'adx.png'),  # Load adx.png with full path
+                              size_hint=(0.35, 0.12),  # Larger tap target for iPhone fingers
                               pos_hint={'center_x': 0.5, 'y': 0.1})  # Position at bottom center
         img2.bind(on_press=self.open_website)  # When image is pressed, call open_website method
         self.layout.add_widget(img2)  # Add the clickable image to the layout
@@ -203,11 +216,11 @@ class GreenScreenApp(App):  # Create our app class that inherits from Kivy's App
         now = datetime.now()  # Get current date and time
         self.clock_label.text = now.strftime('%H:%M:%S  |  %d %b %Y')  # Format as HH:MM:SS | DD Mon YYYY
 
-    def open_website(self, instance):  # Method called when the ADX image is pressed
-        webbrowser.open('https://www.adx.ae/ar-AE/all-equities')  # Open the ADX website in the browser
+    def open_website(self, instance):  # Method called when the ADX image is tapped
+        open_url('https://www.adx.ae/ar-AE/all-equities')  # Open the ADX website (iOS + desktop)
 
-    def open_market_news(self, instance):  # Method called when Market News button is pressed
-        webbrowser.open('https://youtu.be/TYjFce-yN5o?si=4oprhcS5UmLz6zjp')  # Open ADX news page
+    def open_market_news(self, instance):  # Method called when Market News button is tapped
+        open_url('https://youtu.be/TYjFce-yN5o?si=4oprhcS5UmLz6zjp')  # Open video (iOS + desktop)
 
     def show_history_popup(self, instance):  # Show popup with trade market history
         # Create scrollable content
