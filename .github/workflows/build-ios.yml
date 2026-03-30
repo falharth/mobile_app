@@ -36,10 +36,6 @@ jobs:
         run: |
           toolchain build kivy
 
-      - name: Build Pillow recipe (for image support)
-        run: |
-          toolchain build pillow
-
       - name: Create Xcode project
         run: |
           toolchain create "Faisal Trading App" .
