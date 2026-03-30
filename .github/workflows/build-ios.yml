@@ -1,0 +1,46 @@
+name: Build iOS App
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install kivy-ios toolchain
+        run: |
+          pip install kivy-ios
+
+      - name: Build Python3 recipe
+        run: |
+          toolchain build python3
+
+      - name: Build Kivy recipe
+        run: |
+          toolchain build kivy
+
+      - name: Build Pillow recipe (for image support)
+        run: |
+          toolchain build pillow
+
+      - name: Create Xcode project
+        run: |
+          toolchain create "Faisal Trading App" .
+
+      - name: Upload Xcode project
+        uses: actions/upload-artifact@v4
+        with:
+          name: faisaltradingapp-ios-xcode
+          path: faisaltradingapp-ios/
+          retention-days: 14
